@@ -1,0 +1,276 @@
+{
+  "name": "FA0 · Reset demo",
+  "nodes": [
+    {
+      "id": "19dcfc20-9e3c-4ea8-b324-cf95b39cfcba",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "888d9bdc-4bda-4012-97e0-a32782609aeb",
+      "name": "Clear Feedback",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask — Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Feedback"
+        },
+        "clear": "wholeSheet",
+        "keepFirstRow": true
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "ab24314a-1320-4e96-9f54-44342ca9a8fa",
+      "name": "Clear Cases",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask — Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Cases"
+        },
+        "clear": "wholeSheet",
+        "keepFirstRow": true
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "075557c5-000a-47cb-ab2b-d26dc5ce9553",
+      "name": "Clear Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "clear",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask — Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Log"
+        },
+        "clear": "wholeSheet",
+        "keepFirstRow": true
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "f99d0c94-2bba-4f62-aece-9efcfecd7afc",
+      "name": "Original job state",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const pre = { 'NG-1029': '=TODAY()-5', 'NG-1030': '=TODAY()-7', 'NG-1035': '=TODAY()-10' };\nconst out = [];\nfor (let n = 1001; n <= 1040; n++) {\n  const id = 'NG-' + n;\n  out.push({ json: { job_id: id, invited_at: pre[id] || '', invite_status: pre[id] ? 'sent' : '', skip_reason: '' } });\n}\nreturn out;\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "2221f3ea-c720-47d6-96d9-70d942995b97",
+      "name": "Restore Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask — Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "job_id": "={{ $json.job_id }}",
+            "invited_at": "={{ $json.invited_at }}",
+            "invite_status": "={{ $json.invite_status }}",
+            "skip_reason": "={{ $json.skip_reason }}"
+          },
+          "schema": [
+            {
+              "id": "job_id",
+              "displayName": "job_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invited_at",
+              "displayName": "invited_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "invite_status",
+              "displayName": "invite_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "skip_reason",
+              "displayName": "skip_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "matchingColumns": [
+            "job_id"
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Clear Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Feedback": {
+      "main": [
+        [
+          {
+            "node": "Clear Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Cases": {
+      "main": [
+        [
+          {
+            "node": "Clear Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear Log": {
+      "main": [
+        [
+          {
+            "node": "Original job state",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Original job state": {
+      "main": [
+        [
+          {
+            "node": "Restore Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

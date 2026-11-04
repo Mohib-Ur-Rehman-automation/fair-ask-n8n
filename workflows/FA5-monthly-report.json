@@ -1,0 +1,403 @@
+{
+  "name": "FA5 \u00b7 Monthly report",
+  "nodes": [
+    {
+      "id": "b9d0a8a8-2ce4-4aef-85b9-a821e02ceecc",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "d083bc91-5023-437f-8edb-7d0f2ebe1d06",
+      "name": "1st of month 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 1,
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "bd472997-fb99-4e06-ba4a-8727f3929f30",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Config"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "ffa625e7-c0d5-4848-bdb1-b3d27ef784a3",
+      "name": "Read Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "FORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "89c3e32a-737a-40a8-92b7-463cbd0acd37",
+      "name": "Read Cases",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Cases"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "4bca8c3a-3bc0-4e0e-a49e-ec588a16f061",
+      "name": "Read Feedback",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Feedback"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "47166cf7-20ad-4533-bc77-a4f737aca626",
+      "name": "Build report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        96
+      ],
+      "parameters": {
+        "jsCode": "const cfg = Object.create(null);\nfor (const it of $('Read Config').all()) { const k = String(it.json.key == null ? '' : it.json.key).trim(); if (k) cfg[k] = it.json.value; }\nconst tz = 'Asia/Karachi';\nconst LABEL = new Map([['went well', 'It went well'], ['work quality', 'Work quality'], ['lateness', 'Lateness'], ['price/billing', 'Price or billing'], ['communication', 'Communication'], ['damage/safety', 'Damage or safety'], ['other', 'Something else']]);\nconst lab = c => { const v = String(c == null ? '' : c); const k = v.trim().toLowerCase(); return LABEL.has(k) ? LABEL.get(k) : v; };\nconst when = v => { const d = DateTime.fromFormat(String(v == null ? '' : v).trim(), 'yyyy-MM-dd HH:mm', { zone: tz }); return d.isValid ? d.toFormat('ccc d LLL, h:mm a') : String(v == null ? '' : v); };\nconst now = DateTime.now().setZone(tz);\nlet start = now.day <= 3 ? now.minus({ months: 1 }).startOf('month') : now.startOf('month');\nconst ov = String(cfg.report_month || '').trim();\nif (/^[0-9]{4}-[0-9]{2}$/.test(ov)) { const o = DateTime.fromFormat(ov, 'yyyy-MM', { zone: tz }); if (o.isValid) start = o.startOf('month'); }\nconst end = start.endOf('month');\nconst toDate = v => {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'number') return Number.isFinite(v) && Math.abs(v) < 2e6 ? DateTime.fromISO('1899-12-30', { zone: tz }).plus({ days: v }) : null;\n  const s = String(v).trim();\n  for (const f of ['yyyy-MM-dd HH:mm', 'yyyy-MM-dd', 'M/d/yyyy', 'M/d/yyyy H:mm:ss']) { const d = DateTime.fromFormat(s, f, { zone: tz }); if (d.isValid) return d; }\n  const d = DateTime.fromISO(s, { zone: tz }); return d.isValid ? d : null;\n};\nconst inP = d => d && d >= start && d <= end;\nconst esc = s => String(s == null ? '' : s).replace(/[&<>\"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[ch]));\nconst rows = n => $(n).all().map(i => i.json);\nconst jobs = rows('Read Jobs').filter(j => String(j.job_id || '').trim());\nconst cases = rows('Read Cases').filter(c => String(c.case_id || '').trim() && !String(c.case_id).startsWith('C-TEST'));\nconst fb = rows('Read Feedback').filter(f => String(f.timestamp || '').trim());\nconst completed = jobs.filter(j => String(j.job_status).toLowerCase() === 'completed' && inP(toDate(j.completed_date))).length;\nconst invites = jobs.filter(j => String(j.invite_status) === 'sent' && inP(toDate(j.invited_at))).length;\nconst notes = fb.filter(f => inP(toDate(f.timestamp))).length;\nconst opened = cases.filter(c => inP(toDate(c.created_at)));\nconst urgent = opened.filter(c => String(c.severity) === 'urgent').length;\nconst resolved = cases.filter(c => inP(toDate(c.resolved_at)));\nconst hours = resolved.map(c => { const a = toDate(c.created_at), b = toDate(c.resolved_at); return a && b ? b.diff(a, 'hours').hours : null; }).filter(h => h !== null && h >= 0);\nconst onTime = resolved.filter(c => { const r = toDate(c.resolved_at), d = toDate(c.due_at); return r && d && r <= d; }).length;\nconst open = cases.filter(c => String(c.status).toLowerCase() !== 'resolved');\nconst overdue = open.filter(c => { const d = toDate(c.due_at); return d && d < now; });\nconst avg = hours.length ? hours.reduce((a, b) => a + b, 0) / hours.length : null;\nconst fmtH = h => h === null ? '&ndash;' : (h < 48 ? Math.round(h) + ' h' : (h / 24).toFixed(1) + ' d');\nconst byCat = {};\nfor (const c of opened) byCat[c.category || 'other'] = (byCat[c.category || 'other'] || 0) + 1;\nconst cats = Object.entries(byCat).sort((a, b) => b[1] - a[1]);\nconst maxC = cats.length ? cats[0][1] : 1;\nconst label = start.toFormat('LLLL yyyy');\nconst quiet = !invites && !notes && !opened.length;\nconst headline = quiet ? 'A quiet month.' : invites + ' invite' + (invites === 1 ? '' : 's') + ' sent,<br>' + opened.length + ' case' + (opened.length === 1 ? '' : 's') + ' opened.';\nconst tile = (num, lab, sub) => '<div class=\"col\" style=\"display:inline-block;width:100%;max-width:138px;vertical-align:top;font-size:16px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:4px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#F5F7F9;border:1px solid #DCE1E6;border-radius:8px;\"><tr><td style=\"padding:14px;font-family:Arial,Helvetica,sans-serif;\">' +\n  '<div style=\"font-size:28px;font-weight:bold;color:#1C2023;letter-spacing:-0.5px;\">' + num + '</div><div style=\"font-size:12px;font-weight:bold;color:#2E4555;padding-top:4px;\">' + lab + '</div><div style=\"font-size:11px;color:#5B6670;padding-top:2px;\">' + sub + '</div></td></tr></table></td></tr></table></div>';\nconst sect = t => '<div style=\"font-size:12px;font-weight:bold;letter-spacing:1.2px;color:#2E4555;padding-bottom:10px;\">' + t + '</div>';\nconst catRows = cats.length ? cats.map(([k, v]) => '<tr><td style=\"padding:6px 0;font-size:14px;color:#1C2023;width:130px;\">' + esc(lab(k)) + '</td><td style=\"padding:6px 0;\"><div style=\"background:#2E4555;height:10px;border-radius:5px;width:' + Math.max(6, Math.round(v / maxC * 100)) + '%;\"></div></td><td style=\"padding:6px 0 6px 10px;font-size:14px;font-weight:bold;width:30px;text-align:right;\">' + v + '</td></tr>').join('') : '<tr><td style=\"font-size:14px;color:#5B6670;padding:6px 0;\">No cases opened this month.</td></tr>';\nconst oldest = overdue.sort((a, b) => toDate(a.due_at) - toDate(b.due_at)).slice(0, 5);\nconst odRows = oldest.length ? oldest.map(c => '<tr><td style=\"padding:10px 0;border-top:1px solid #DCE1E6;font-family:Arial,Helvetica,sans-serif;\"><div style=\"font-size:15px;font-weight:bold;color:#1C2023;\">' + esc(c.summary) + '</div><div style=\"font-size:12px;color:#5B6670;padding-top:3px;\">' + esc(c.case_id) + ' &middot; ' + esc(lab(c.category)) + ' &middot; due ' + esc(when(c.due_at)) + '</div></td></tr>').join('') : '<tr><td style=\"font-size:14px;color:#5B6670;padding:6px 0;\">Nothing overdue. Every open case is inside its deadline.</td></tr>';\nconst html = '<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>@media (max-width:620px){.col{max-width:50% !important;}}</style></head><body style=\"margin:0;padding:0;background:#EEF1F4;\">' +\n  '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#EEF1F4;\"><tr><td align=\"center\" style=\"padding:24px 12px;\">' +\n  '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:600px;background:#FFFFFF;border-radius:6px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1C2023;\">' +\n  '<tr><td style=\"padding:20px 28px;background:#263845;border-bottom:3px solid #D4B26A;\"><span style=\"font-size:17px;font-weight:bold;color:#FFFFFF;\">NORTHGATE</span> <span style=\"font-size:11px;letter-spacing:0.5px;color:#C9D4DD;\">MONTHLY REPORT</span></td></tr>' +\n  '<tr><td style=\"padding:28px 28px 8px;\"><div style=\"font-size:12px;font-weight:bold;letter-spacing:1.2px;color:#2E4555;padding-bottom:10px;\">' + esc(label.toUpperCase()) + '</div><div style=\"font-size:34px;font-weight:bold;line-height:1.08;letter-spacing:-0.5px;\">' + headline + '</div>' +\n  '<div style=\"font-size:15px;line-height:1.55;color:#5B6670;padding-top:12px;\">' + completed + ' jobs completed. ' + (overdue.length ? overdue.length + ' open case' + (overdue.length === 1 ? ' is' : 's are') + ' past deadline right now.' : 'No open case is past its deadline.') + '</div></td></tr>' +\n  '<tr><td style=\"padding:16px 24px 8px;font-size:0;\" align=\"center\">' +\n  tile(invites, 'Invites sent', 'same email to all') + tile(urgent, 'Urgent cases', 'of ' + opened.length + ' opened') + tile(resolved.length, 'Resolved', resolved.length ? onTime + ' on time' : 'none yet') + tile(fmtH(avg), 'Avg to resolve', 'opened to resolved') +\n  '</td></tr>' +\n  '<tr><td style=\"padding:20px 28px 8px;\">' + sect('CASES BY CATEGORY') + '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">' + catRows + '</table></td></tr>' +\n  '<tr><td style=\"padding:20px 28px 24px;\">' + sect('OLDEST OVERDUE') + '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">' + odRows + '</table></td></tr>' +\n  '<tr><td style=\"padding:16px 28px;background:#EEF1F4;font-size:12px;line-height:1.6;color:#5B6670;\">Public reviews are not counted: Google does not tell this system who posted. Every invite offers the public review and the private note equally.</td></tr>' +\n  '</table></td></tr></table></body></html>';\nconst to = String(cfg.report_to || cfg.alert_email || '').trim();\nreturn [{ json: { to, from: 'Northgate Home Services <' + String(cfg.from_email || '').trim() + '>', subject: 'Northgate report: ' + label, html, period: label, invites, notes, opened: opened.length, resolved: resolved.length } }];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "07b05219-c937-441a-a90a-b19d06d823fa",
+      "name": "Send report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        96
+      ],
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "options": {
+          "appendAttribution": false
+        },
+        "html": "={{ $json.html }}"
+      },
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Northgate"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "d1e5de55-a8e7-4deb-a63e-8ea14db90aa6",
+      "name": "Write log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1568,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now.setZone('Asia/Karachi').toFormat('yyyy-MM-dd HH:mm') }}",
+            "module": "M5 report",
+            "event": "={{ $('Send report').item.json.error ? 'report_failed' : 'report_sent' }}",
+            "detail": "={{ $('Build report').item.json.period + ': ' + $('Build report').item.json.invites + ' invites, ' + $('Build report').item.json.opened + ' cases' }}"
+          },
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "module",
+              "displayName": "module",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "event",
+              "displayName": "event",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1st of month 08:00": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Read Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Jobs": {
+      "main": [
+        [
+          {
+            "node": "Read Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cases": {
+      "main": [
+        [
+          {
+            "node": "Read Feedback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Feedback": {
+      "main": [
+        [
+          {
+            "node": "Build report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build report": {
+      "main": [
+        [
+          {
+            "node": "Send report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send report": {
+      "main": [
+        [
+          {
+            "node": "Write log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

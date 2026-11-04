@@ -1,0 +1,1 @@
+{ "name": "fair-ask-n8n-tests", "private": true, "scripts": { "test": "node tests/testkey.test.js && node tests/attacks.test.js && node tests/fuzz.test.js 5000 && node tests/page.test.js" }, "devDependencies": { "luxon": "^3.5.0", "xlsx": "^0.18.5" } }

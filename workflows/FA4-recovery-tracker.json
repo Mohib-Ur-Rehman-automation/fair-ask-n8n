@@ -1,0 +1,534 @@
+{
+  "name": "FA4 \u00b7 Recovery tracker",
+  "nodes": [
+    {
+      "id": "0a7db08c-c16d-4cdd-bf5b-e709a5f293f6",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "b26d15a3-e96c-4be3-aa27-7e58a14ca5a5",
+      "name": "Daily 09:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "52f18eeb-d506-45f3-83ee-369748b7761c",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Config"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "315bfef2-fc25-4c15-91a5-ad5d8c572f8c",
+      "name": "Read Cases",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Cases"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "fca78195-5d37-4d28-bd02-8ad442ab2a3f",
+      "name": "Read Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Log"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "5a00f670-e3ea-42cf-a843-7b1fa03cb97c",
+      "name": "Find overdue",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "jsCode": "const cfg = Object.create(null);\nfor (const it of $('Read Config').all()) { const k = String(it.json.key == null ? '' : it.json.key).trim(); if (k) cfg[k] = it.json.value; }\nconst dryRun = String(cfg.dry_run || '').trim().toLowerCase() === 'yes';\nconst from = 'Northgate Home Services <' + String(cfg.from_email || '').trim() + '>';\nconst fallbackOwner = String(cfg.alert_email || cfg['owner:other'] || '').trim();\nconst allowed = new Set(Object.keys(cfg).filter(k => k.startsWith('owner:')).map(k => String(cfg[k]).trim().toLowerCase()).concat([fallbackOwner.toLowerCase()]));\nconst tz = 'Asia/Karachi';\nconst LABEL = new Map([['went well', 'It went well'], ['work quality', 'Work quality'], ['lateness', 'Lateness'], ['price/billing', 'Price or billing'], ['communication', 'Communication'], ['damage/safety', 'Damage or safety'], ['other', 'Something else']]);\nconst lab = c => { const v = String(c == null ? '' : c); const k = v.trim().toLowerCase(); return LABEL.has(k) ? LABEL.get(k) : v; };\nconst when = v => { const d = DateTime.fromFormat(String(v == null ? '' : v).trim(), 'yyyy-MM-dd HH:mm', { zone: tz }); return d.isValid ? d.toFormat('ccc d LLL, h:mm a') : String(v == null ? '' : v); };\nconst now = DateTime.now().setZone(tz);\nconst today = now.toISODate();\nconst esc = s => String(s == null ? '' : s).replace(/[&<>\"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[ch]));\nconst parse = v => { const s = String(v || '').trim(); let d = DateTime.fromFormat(s, 'yyyy-MM-dd HH:mm', { zone: tz }); if (!d.isValid) d = DateTime.fromISO(s, { zone: tz }); return d.isValid ? d : null; };\nconst reminded = new Set($('Read Log').all().map(i => i.json)\n  .filter(r => String(r.module) === 'M4 reminder' && String(r.event) === 'reminded' && String(r.timestamp || '').startsWith(today))\n  .map(r => String(r.detail).trim()));\nconst out = [], byOwner = {};\nfor (const c of $('Read Cases').all().map(i => i.json)) {\n  const id = String(c.case_id || '').trim(); if (!id) continue;\n  const status = String(c.status || '').trim().toLowerCase();\n  if (status === 'resolved') {\n    if (!String(c.resolved_at || '').trim()) out.push({ json: { kind: 'resolve', case_id: id, resolved_at: now.toFormat('yyyy-MM-dd HH:mm'), live: !dryRun } });\n    continue;\n  }\n  const due = parse(c.due_at);\n  if (!due || due > now || reminded.has(id)) continue;\n  const ownerRaw = String(c.owner == null ? '' : c.owner).trim().toLowerCase();\n  const owner = allowed.has(ownerRaw) && ownerRaw ? ownerRaw : fallbackOwner;\n  const hrs = Math.floor(now.diff(due, 'hours').hours);\n  const dys = Math.floor(hrs / 24);\n  const late = hrs < 24 ? hrs + (hrs === 1 ? ' hour' : ' hours') + ' overdue' : dys + (dys === 1 ? ' day' : ' days') + ' overdue';\n  (byOwner[owner] = byOwner[owner] || []).push({ id, job: c.job_id, cat: c.category, sev: String(c.severity).toLowerCase(), sum: c.summary, status, late, hrs });\n}\nfor (const [owner, list] of Object.entries(byOwner)) {\n  list.sort((a, b) => (a.sev === 'urgent' ? 0 : 1) - (b.sev === 'urgent' ? 0 : 1) || b.hrs - a.hrs);\n  const block = c => '<tr><td style=\"padding:16px 0;border-top:1px solid #DCE1E6;\">' +\n    '<span style=\"display:inline-block;background:' + (c.sev === 'urgent' ? '#1C2023' : '#E4EAF0') + ';color:' + (c.sev === 'urgent' ? '#D4B26A' : '#2E4555') + ';font-size:11px;font-weight:bold;letter-spacing:1px;padding:4px 8px;border-radius:4px;\">' + (c.sev === 'urgent' ? 'URGENT' : 'NORMAL') + '</span>' +\n    ' <span style=\"font-size:13px;font-weight:bold;color:#2E4555;\">' + esc(c.late) + '</span>' +\n    '<div style=\"font-size:17px;font-weight:bold;line-height:1.35;padding:8px 0 4px;color:#1C2023;\">' + esc(c.sum) + '</div>' +\n    '<div style=\"font-size:13px;color:#5B6670;\">' + esc(c.id) + ' &middot; job ' + esc(c.job) + ' &middot; ' + esc(lab(c.cat)) + ' &middot; status ' + esc(c.status) + '</div></td></tr>';\n  const n = list.length;\n  const waiting = list.filter(c => c.status === 'open').length;\n  const head = waiting === n ? n + (n === 1 ? ' customer is' : ' customers are') + '<br>still waiting.' : n + (n === 1 ? ' case is' : ' cases are') + '<br>past deadline.';\n  const sub = waiting === n ? '' : '<div style=\"font-size:15px;line-height:1.55;color:#5B6670;padding-top:10px;\">' + (waiting ? waiting + ' still waiting for a first reply. ' : '') + (n - waiting) + ' contacted but not resolved.</div>';\n  const shown = list.slice(0, 25);\n  const html = '<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"></head><body style=\"margin:0;padding:0;background:#EEF1F4;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#EEF1F4;\"><tr><td align=\"center\" style=\"padding:24px 12px;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:600px;background:#FFFFFF;border-radius:6px;overflow:hidden;font-family:Arial,Helvetica,sans-serif;color:#1C2023;\">' +\n    '<tr><td style=\"padding:20px 28px;background:#263845;border-bottom:3px solid #D4B26A;\"><span style=\"font-size:17px;font-weight:bold;color:#FFFFFF;\">NORTHGATE</span> <span style=\"font-size:11px;letter-spacing:0.5px;color:#C9D4DD;\">MORNING CHECK</span></td></tr>' +\n    '<tr><td style=\"padding:28px 28px 4px;\"><div style=\"font-size:12px;font-weight:bold;letter-spacing:1.2px;color:#2E4555;\">' + esc(now.toFormat('ccc d LLL').toUpperCase()) + ' &middot; FOLLOW UP TODAY</div>' +\n    '<div style=\"font-size:34px;font-weight:bold;line-height:1.05;letter-spacing:-0.5px;padding-top:10px;\">' + head + '</div>' + sub + '</td></tr>' +\n    '<tr><td style=\"padding:16px 28px 24px;\"><table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\">' + shown.map(block).join('') + (n > 25 ? '<tr><td style=\"padding:14px 0;border-top:1px solid #DCE1E6;font-size:14px;color:#5B6670;\">And ' + (n - 25) + ' more in the Cases tab.</td></tr>' : '') + '</table></td></tr>' +\n    '<tr><td style=\"padding:16px 28px;background:#EEF1F4;font-size:12px;line-height:1.6;color:#5B6670;\">Reply to the customer, then set the case to contacted or resolved in the Cases tab. You get this at most once a day per case.</td></tr>' +\n    '</table></td></tr></table></body></html>';\n  out.push({ json: { kind: 'digest', to: owner, from, subject: 'Northgate: ' + n + ' overdue case' + (n === 1 ? '' : 's') + ' need a reply', html, case_ids: list.map(c => c.id).join(','), live: !dryRun } });\n}\nreturn out;\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "0bdeb627-81eb-4a56-856f-f4a6f8e03c7f",
+      "name": "Live run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.live }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "9a4cca63-3058-4d67-99cf-fcbc44179ec9",
+      "name": "Kind?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.kind }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "digest"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "0d75be3d-c45f-47d0-8919-d8f7715be9fb",
+      "name": "Send digest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1568,
+        0
+      ],
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "html",
+        "options": {
+          "appendAttribution": false
+        },
+        "html": "={{ $json.html }}"
+      },
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Northgate"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "c4f93a43-d810-4071-b120-cc38197c011f",
+      "name": "Stamp resolved_at",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1568,
+        192
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Cases"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "case_id": "={{ $json.case_id }}",
+            "resolved_at": "={{ $json.resolved_at }}"
+          },
+          "schema": [
+            {
+              "id": "case_id",
+              "displayName": "case_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resolved_at",
+              "displayName": "resolved_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "matchingColumns": [
+            "case_id"
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "8cedb028-68de-4d5b-8fbe-ab383868e521",
+      "name": "Log rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const out = [];\nconst ts = DateTime.now().setZone('Asia/Karachi').toFormat('yyyy-MM-dd HH:mm');\n$input.all().forEach((it, i) => {\n  const src = $('Kind?').itemMatching(i).json;\n  const ok = !it.json.error;\n  for (const id of String(src.case_ids || '').split(',').filter(Boolean))\n    out.push({ json: { timestamp: ts, module: 'M4 reminder', event: ok ? 'reminded' : 'reminder_failed', detail: id } });\n});\nreturn out;\n"
+      }
+    },
+    {
+      "id": "22dc6e02-7dce-47e9-b349-e0eb6bc24ddc",
+      "name": "Write log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2016,
+        0
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "module": "={{ $json.module }}",
+            "event": "={{ $json.event }}",
+            "detail": "={{ $json.detail }}"
+          },
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "module",
+              "displayName": "module",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "event",
+              "displayName": "event",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "RAW"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 09:00": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Read Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cases": {
+      "main": [
+        [
+          {
+            "node": "Read Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Log": {
+      "main": [
+        [
+          {
+            "node": "Find overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find overdue": {
+      "main": [
+        [
+          {
+            "node": "Live run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live run?": {
+      "main": [
+        [
+          {
+            "node": "Kind?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kind?": {
+      "main": [
+        [
+          {
+            "node": "Send digest",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Stamp resolved_at",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send digest": {
+      "main": [
+        [
+          {
+            "node": "Log rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log rows": {
+      "main": [
+        [
+          {
+            "node": "Write log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

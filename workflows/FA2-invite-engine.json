@@ -1,0 +1,730 @@
+{
+  "name": "FA2 \u00b7 Invite engine",
+  "nodes": [
+    {
+      "id": "1c60d650-d518-4c29-84fb-a2b59c366ee3",
+      "name": "Run now",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "c443b831-3440-409f-8a8c-08cdb754eacf",
+      "name": "Daily 10:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        192
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "cd3f6a96-08b7-46ee-be6b-5f24d6670764",
+      "name": "Read Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        224,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Config"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "7a340cbc-7ea5-4c52-8f99-48e386e8979a",
+      "name": "Read Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        448,
+        96
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "FORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      },
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "id": "15c165aa-0e30-482a-a90d-19c65f829bf1",
+      "name": "Decide invites",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        96
+      ],
+      "parameters": {
+        "jsCode": "const cfg = Object.create(null);\nfor (const it of $('Read Config').all()) { const k = String(it.json.key == null ? '' : it.json.key).trim(); if (k) cfg[k] = it.json.value; }\nconst num = (k, d) => { const n = Number(cfg[k]); return Number.isFinite(n) && n >= 0 ? n : d; };\nconst WAIT = num('wait_days', 2), WIN = num('window_days', 14), DEDUPE = num('dedupe_days', 30);\nconst reviewUrl = String(cfg.public_review_url || '').trim();\nconst formUrl = String(cfg.feedback_form_url || '').trim();\nconst okUrl = u => /^https?:\\/\\/[^\\s\"'<>]+$/i.test(u);\nif (!okUrl(reviewUrl) || !okUrl(formUrl)) throw new Error('Config: public_review_url and feedback_form_url must both be http(s) links. Nothing was sent (rule R4).');\nconst dryRun = String(cfg.dry_run || '').trim().toLowerCase() === 'yes';\nconst fromEmail = String(cfg.from_email || '').trim();\nconst alertEmail = String(cfg.alert_email || '').trim();\nconst EMAIL_RE = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/;\nif (!dryRun && (!EMAIL_RE.test(fromEmail) || !EMAIL_RE.test(alertEmail))) throw new Error('Config: from_email and alert_email are needed for a live run.');\nconst tz = 'Asia/Karachi';\nconst today = DateTime.now().setZone(tz).startOf('day');\nfunction toDate(v) {\n  if (v === null || v === undefined || v === '') return null;\n  if (typeof v === 'number') return Number.isFinite(v) && Math.abs(v) < 2e6 ? DateTime.fromISO('1899-12-30', { zone: tz }).plus({ days: Math.floor(v) }) : null;\n  const s = String(v).trim();\n  let d = DateTime.fromISO(s, { zone: tz });\n  if (!d.isValid) d = DateTime.fromFormat(s, 'M/d/yyyy', { zone: tz });\n  if (!d.isValid) d = DateTime.fromFormat(s, 'yyyy/MM/dd', { zone: tz });\n  return d.isValid ? d.startOf('day') : null;\n}\nconst daysAgo = d => Math.round(today.diff(d, 'days').days);\nconst norm = e => String(e || '').trim().toLowerCase();\nconst esc = s => String(s == null ? '' : s).replace(/[&<>\"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', \"'\": '&#39;' }[ch]));\nconst jobs = $('Read Jobs').all().map(i => i.json).filter(j => String(j.job_id || '').trim() !== '');\nconst lastInvite = {};\nfor (const j of jobs) {\n  const inv = toDate(j.invited_at);\n  if (inv && String(j.invite_status || '').trim() === 'sent') { const e = norm(j.customer_email); if (!lastInvite[e] || inv > lastInvite[e]) lastInvite[e] = inv; }\n}\nconst out = [], cands = [];\nconst skip = (j, id, reason) => {\n  if (String(j.invite_status || '').trim() === 'skipped' && String(j.skip_reason || '').trim() === reason) return;\n  out.push({ json: { job_id: id, action: 'skip', invited_at: '', invite_status: 'skipped', skip_reason: reason, live: !dryRun } });\n};\nfor (const j of jobs) {\n  if (String(j.invited_at || '').trim() !== '') continue;\n  const id = String(j.job_id).trim();\n  const email = norm(j.customer_email);\n  const status = String(j.job_status || '').trim().toLowerCase();\n  const done = toDate(j.completed_date);\n  let r = '';\n  if (status !== 'completed') r = 'not_completed';\n  else if (!done) r = 'bad_completed_date';\n  else if (daysAgo(done) < WAIT) r = 'too_soon';\n  else if (daysAgo(done) > WIN) r = 'too_old';\n  else if (!email) r = 'missing_email';\n  else if (!EMAIL_RE.test(email)) r = 'invalid_email';\n  else if (String(j.opted_out || '').trim().toUpperCase() === 'Y') r = 'opted_out';\n  else if (lastInvite[email] && daysAgo(lastInvite[email]) < DEDUPE) r = 'recent_invite';\n  if (r) skip(j, id, r); else cands.push({ j, id, email, done });\n}\ncands.sort((a, b) => (a.done.toMillis() - b.done.toMillis()) || (a.id < b.id ? -1 : 1));\nconst ROLE = new Map([['plumbing', 'Our plumber'], ['electrical', 'Our electrician'], ['heating', 'Our heating engineer']]);\nconst CAP = Math.max(1, num('max_invites_per_run', 40));\nlet sent = 0, held = 0;\nconst claimed = new Set();\nfor (const c of cands) {\n  if (claimed.has(c.email)) { skip(c.j, c.id, 'duplicate_email'); continue; }\n  if (sent >= CAP) { held++; continue; }\n  claimed.add(c.email); sent++;\n  const raw = String(c.j.customer_name || '').trim();\n  const first = raw.split(/\\s+/)[0] || '';\n  const nameOk = /^[A-Za-z][A-Za-z'-]{0,29}$/.test(first);\n  const svcRaw = String(c.j.service_type == null ? '' : c.j.service_type).trim().toLowerCase();\n  const svc = ROLE.has(svcRaw) ? svcRaw : '';\n  const role = ROLE.get(svc) || 'Our team';\n  const when = c.done.toFormat('d LLL yyyy');\n  const privUrl = formUrl + (formUrl.includes('?') ? '&' : '?') + 'job_id=' + encodeURIComponent(c.id);\n  const headline = nameOk ? esc(first) + ',<br>how did we do?' : 'How did<br>we do?';\n  const card = (n, t, d, b, href) =>\n    '<div class=\"col\" style=\"display:inline-block;width:100%;max-width:270px;vertical-align:top;font-size:16px;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\"><tr><td style=\"padding:6px;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"border:1px solid #DCE1E6;border-radius:10px;background:#F5F7F9;\"><tr><td style=\"padding:20px;font-family:Arial,Helvetica,sans-serif;color:#1C2023;\">' +\n    '<div style=\"font-size:13px;font-weight:bold;color:#2E4555;\">' + n + '</div>' +\n    '<div style=\"font-size:20px;font-weight:bold;line-height:1.25;padding:8px 0 6px;\">' + t + '</div>' +\n    '<div style=\"font-size:14px;line-height:1.5;color:#5B6670;padding-bottom:16px;\">' + d + '</div>' +\n    '<a href=\"' + esc(href) + '\" style=\"display:block;background:#2E4555;color:#FFFFFF;text-decoration:none;font-weight:bold;font-size:15px;text-align:center;padding:14px 12px;border-radius:8px;\">' + b + '</a>' +\n    '</td></tr></table></td></tr></table></div>';\n  const html = '<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">' +\n    '<style>@media (max-width:620px){.col{max-width:100% !important;} .pad{padding-left:20px !important;padding-right:20px !important;} .h1{font-size:34px !important;} .padc{padding-left:14px !important;padding-right:14px !important;} .jobid{float:none !important;display:block !important;line-height:18px !important;padding-top:6px;}}</style></head>' +\n    '<body style=\"margin:0;padding:0;background:#EEF1F4;\">' +\n    '<div style=\"display:none;max-height:0;overflow:hidden;\">Tell us how your ' + esc(svc || 'recent') + ' job went. Public review or private note, your choice.</div>' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"background:#EEF1F4;\"><tr><td align=\"center\" style=\"padding:24px 12px;\">' +\n    '<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"max-width:600px;background:#FFFFFF;border-radius:6px;overflow:hidden;\">' +\n    '<tr><td class=\"pad\" style=\"padding:22px 36px;background:#263845;border-bottom:3px solid #D4B26A;font-family:Arial,Helvetica,sans-serif;\">' +\n    '<span style=\"font-size:19px;font-weight:bold;letter-spacing:-0.3px;color:#EEF1F4;\">NORTHGATE</span> <span style=\"font-size:12px;letter-spacing:0.5px;color:#C9D4DD;\">HOME SERVICES</span>' +\n    '<span class=\"jobid\" style=\"float:right;font-size:12px;color:#C9D4DD;line-height:24px;\">JOB ' + esc(c.id) + '</span></td></tr>' +\n    '<tr><td class=\"pad\" style=\"padding:36px 36px 8px;font-family:Arial,Helvetica,sans-serif;color:#1C2023;\">' +\n    '<div style=\"font-size:12px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase;color:#2E4555;\">After your ' + esc(svc || 'recent') + ' job &middot; ' + esc(when) + '</div>' +\n    '<div class=\"h1\" style=\"font-size:42px;line-height:1.04;font-weight:bold;letter-spacing:-1px;padding-top:14px;\">' + headline + '</div>' +\n    '<div style=\"font-size:17px;line-height:1.55;padding-top:18px;\">' + role + ' finished the work on ' + esc(when) + '. Tell us how it went, good or bad. It takes about a minute.</div>' +\n    '</td></tr>' +\n    '<tr><td class=\"padc\" style=\"padding:22px 30px 32px;font-size:0;\" align=\"center\">' +\n    card('01', 'Public review', 'Post on Google. Other customers can read it.', 'Post a public review', reviewUrl) +\n    card('02', 'Private note', 'Goes to our team only. We reply within 3 days.', 'Send private feedback', privUrl) +\n    '</td></tr>' +\n    '<tr><td class=\"pad\" style=\"padding:18px 36px;background:#EEF1F4;font-family:Arial,Helvetica,sans-serif;font-size:12px;line-height:1.6;color:#5B6670;\">' +\n    'Northgate Home Services is a demo business. You got this because we completed a job for you. Reply STOP and we will not email you again.' +\n    '</td></tr></table></td></tr></table></body></html>';\n  const text = (nameOk ? first + ', how did we do?' : 'How did we do?') + '\\n\\n' +\n    role + ' finished the work on ' + when + ' (job ' + c.id + '). Tell us how it went, good or bad.\\n\\n' +\n    '01 Public review (on Google, other customers can read it):\\n' + reviewUrl + '\\n\\n' +\n    '02 Private note (our team only, we reply within 3 days):\\n' + privUrl + '\\n\\n' +\n    'Northgate Home Services is a demo business. Reply STOP and we will not email you again.';\n  out.push({ json: { job_id: c.id, action: 'send', to: c.email, from: 'Northgate Home Services <' + fromEmail + '>',\n    subject: 'How did we do on your ' + (svc || 'recent') + ' job?', html, text, has_public_link: html.includes(esc(reviewUrl)) && text.includes(reviewUrl), live: !dryRun } });\n}\nif (held && out.length) out[0].json.held_for_next_run = held;\nreturn out;\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "5ace4e8e-37a6-4e55-a77a-f7cb74860b19",
+      "name": "Live run?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.live }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c90f0d47-9f96-411e-9c73-282ecb3c5dc9",
+      "name": "Send?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        96
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.action }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "send"
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "1692d63c-9cc2-4750-8461-040dc4a5cb23",
+      "name": "Send invite",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        32
+      ],
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "both",
+        "options": {
+          "appendAttribution": false
+        },
+        "html": "={{ $json.html }}",
+        "text": "={{ $json.text }}"
+      },
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Northgate"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "id": "cf1183d0-2410-483d-9b22-1b46a8efc5a6",
+      "name": "Mark sent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        32
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "s1",
+              "name": "job_id",
+              "value": "={{ $('Send?').item.json.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "s2",
+              "name": "invited_at",
+              "value": "={{ $now.setZone('Asia/Karachi').toISODate() }}",
+              "type": "string"
+            },
+            {
+              "id": "s3",
+              "name": "invite_status",
+              "value": "sent",
+              "type": "string"
+            },
+            {
+              "id": "s4",
+              "name": "skip_reason",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "8b6f538e-e154-4ffb-9893-bb5c2681b73e",
+      "name": "Mark failed",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1568,
+        320
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f1",
+              "name": "job_id",
+              "value": "={{ $('Send?').item.json.job_id }}",
+              "type": "string"
+            },
+            {
+              "id": "f2",
+              "name": "invited_at",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "f3",
+              "name": "invite_status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "f4",
+              "name": "skip_reason",
+              "value": "smtp_error",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "63fd0e1e-3b7f-4c6e-8331-29d147de4a82",
+      "name": "Collect results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1792,
+        176
+      ],
+      "parameters": {
+        "mode": "append",
+        "numberInputs": 3
+      }
+    },
+    {
+      "id": "59ea0fd6-ae10-49b8-acb3-48061791a926",
+      "name": "Update Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2016,
+        176
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Jobs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "job_id": "={{ $json.job_id }}",
+            "invited_at": "={{ $json.invited_at }}",
+            "invite_status": "={{ $json.invite_status }}",
+            "skip_reason": "={{ $json.skip_reason }}"
+          },
+          "schema": [
+            {
+              "id": "job_id",
+              "displayName": "job_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "invited_at",
+              "displayName": "invited_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "invite_status",
+              "displayName": "invite_status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "skip_reason",
+              "displayName": "skip_reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "matchingColumns": [
+            "job_id"
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "2a5a8c67-822a-4b9e-8251-c11936306682",
+      "name": "Summarize run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2240,
+        176
+      ],
+      "parameters": {
+        "jsCode": "const rows = $('Update Jobs').all().map(i => i.json);\nconst count = s => rows.filter(r => String(r.invite_status) === s).length;\nconst failed = rows.filter(r => String(r.invite_status) === 'failed').map(r => String(r.job_id));\nconst d = $('Decide invites').all().map(i => i.json).find(x => x.from) || {};\nreturn [{ json: {\n  timestamp: DateTime.now().setZone('Asia/Karachi').toFormat('yyyy-MM-dd HH:mm'),\n  module: 'M2 invite engine', event: failed.length ? 'run_with_failures' : 'run_ok',\n  detail: 'sent ' + count('sent') + ', skipped ' + count('skipped') + ', failed ' + failed.length + (failed.length ? ' (' + failed.join(', ') + ')' : ''),\n  failed_count: failed.length, failed_ids: failed.join(', '), from: d.from || ''\n} }];\n"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "67de1882-aa61-4a2d-8769-50d1cc509de6",
+      "name": "Write log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2464,
+        176
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SHEET_ID",
+          "cachedResultName": "Fair Ask \u2014 Northgate"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Log"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "module": "={{ $json.module }}",
+            "event": "={{ $json.event }}",
+            "detail": "={{ $json.detail }}"
+          },
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "module",
+              "displayName": "module",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "event",
+              "displayName": "event",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "detail",
+              "displayName": "detail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        }
+      },
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "id": "9d45d2f4-f7e3-47b1-9918-5a11c5c59d01",
+      "name": "Any failures?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        176
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Summarize run').item.json.failed_count }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "bda83eaa-bc7a-4f3d-8dc3-2834fa7f2a5e",
+      "name": "Alert owner",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2912,
+        176
+      ],
+      "parameters": {
+        "fromEmail": "={{ $('Summarize run').item.json.from }}",
+        "toEmail": "={{ $('Read Config').all().find(i => i.json.key === 'alert_email').json.value }}",
+        "subject": "=Fair Ask: {{ $('Summarize run').item.json.failed_count }} invite(s) failed",
+        "emailFormat": "text",
+        "options": {
+          "appendAttribution": false
+        },
+        "text": "=Invites failed for: {{ $('Summarize run').item.json.failed_ids }}. They stay unsent and retry on the next run. Check the SMTP credential."
+      },
+      "credentials": {
+        "smtp": {
+          "name": "SMTP Northgate"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Run now": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 10:00": {
+      "main": [
+        [
+          {
+            "node": "Read Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Config": {
+      "main": [
+        [
+          {
+            "node": "Read Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Jobs": {
+      "main": [
+        [
+          {
+            "node": "Decide invites",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide invites": {
+      "main": [
+        [
+          {
+            "node": "Live run?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Live run?": {
+      "main": [
+        [
+          {
+            "node": "Send?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send?": {
+      "main": [
+        [
+          {
+            "node": "Send invite",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send invite": {
+      "main": [
+        [
+          {
+            "node": "Mark sent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark sent": {
+      "main": [
+        [
+          {
+            "node": "Collect results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Mark failed": {
+      "main": [
+        [
+          {
+            "node": "Collect results",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Collect results": {
+      "main": [
+        [
+          {
+            "node": "Update Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Jobs": {
+      "main": [
+        [
+          {
+            "node": "Summarize run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize run": {
+      "main": [
+        [
+          {
+            "node": "Write log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write log": {
+      "main": [
+        [
+          {
+            "node": "Any failures?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any failures?": {
+      "main": [
+        [
+          {
+            "node": "Alert owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
