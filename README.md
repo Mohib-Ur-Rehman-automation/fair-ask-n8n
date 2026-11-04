@@ -3,7 +3,7 @@
 A small n8n system for a home-services business (demo: **Northgate Home Services**, plumbing, electrical and heating).
 After a job is finished, every eligible customer gets the **same** neutral email: leave a public review, or send a private note. Private notes become tracked cases with an owner and a deadline, nobody is left waiting without a reminder, and the owner gets a one-screen report every month.
 
-![Review invite, desktop](assets/invite-desktop.png)
+![Fair Ask: invite email, private feedback page and monthly report](assets/banner.png)
 
 ## What it does
 
