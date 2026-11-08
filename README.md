@@ -14,6 +14,7 @@ After a job is finished, every eligible customer gets the **same** neutral email
 | **FA4 · Recovery tracker** | daily 09:00 | One "morning check" email per owner listing their overdue cases. A case is chased at most once a day. |
 | **FA5 · Monthly report** | 1st of the month, 08:00 | Invites sent, private notes, cases by category, time to resolve, oldest overdue. |
 | **FA0 · Reset demo** | manual | Puts the demo Sheet back to its starting state. |
+| **e0 · Error alerts** | any failed production run | Emails the workflow, the failed node, the error and a link to the run. Shared with my other n8n projects. |
 
 Everything runs on free tools: n8n Community Edition, one Google Sheet, Gmail SMTP with an app password, and (optionally) Groq for one-line summaries.
 
@@ -126,9 +127,10 @@ The page answers before the case is filed, so the customer never waits on Sheets
    *Optional look:* in that Sheet, **Extensions → Apps Script**, paste [`data/fair-ask-sheet-format.gs`](data/fair-ask-sheet-format.gs), save, and run `formatFairAsk`. It adds the header colours, banded rows, status colours and dropdowns, and never touches data. Create the script from inside the Sheet: a standalone script can't find the spreadsheet.
 2. **Config tab.** Set `from_email` (must be the Gmail account that sends), `alert_email`, owner emails, and keep `dry_run = yes` for the first run.
 3. **Credentials in n8n.** Google Sheets (OAuth2), SMTP (`smtp.gmail.com`, port 465, SSL, Gmail app password), Groq (optional).
-4. **Import** the five files in `workflows/` (*Overview → Create → Import from file*). In every Google Sheets node pick your Sheet; in every email node pick your SMTP credential.
-5. **Dry run.** Run FA2 manually. With `dry_run = yes` it decides but sends and writes nothing. Compare with the TestKey tab.
-6. **Go live.** Set `dry_run = no`, run FA2, then publish FA2, FA3, FA4 and FA5. The private-feedback link only works on the **production** URL (`…/webhook/northgate-feedback`), so FA3 must be published. If n8n sits behind a domain or tunnel, set `feedback_form_url` in Config to that public address.
+4. **Import** the six files in `workflows/` (*Overview → Create → Import from file*), **e0 first**. In every Google Sheets node pick your Sheet; in every email node pick your SMTP credential, and set e0's from/to address.
+5. **Error alerts.** In FA2, FA3, FA4 and FA5: **⋯ → Settings → Error Workflow → e0 · error-alerts**. Exports don't carry this setting, so it has to be set by hand. Without it a crashed run (Google access expired, Sheets down) fails silently.
+6. **Dry run.** Run FA2 manually. With `dry_run = yes` it decides but sends and writes nothing. Compare with the TestKey tab.
+7. **Go live.** Set `dry_run = no`, run FA2, then publish FA2, FA3, FA4 and FA5. The private-feedback link only works on the **production** URL (`…/webhook/northgate-feedback`), so FA3 must be published. If n8n sits behind a domain or tunnel, set `feedback_form_url` in Config to that public address.
 
 ## Known limitations
 
