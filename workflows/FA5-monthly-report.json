@@ -1,5 +1,5 @@
 {
-  "name": "FA5 \u00b7 Monthly report",
+  "name": "FA5 · Monthly report",
   "nodes": [
     {
       "id": "b9d0a8a8-2ce4-4aef-85b9-a821e02ceecc",
@@ -50,7 +50,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -83,7 +83,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -125,7 +125,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -159,7 +159,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -233,7 +233,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -299,6 +299,22 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "content": "## FA5 · Monthly report\nRuns on the **1st of each month at 08:00** (or **Run now**) and reports **last month**: invites sent, private notes, cases by category, average time to resolve, and the oldest overdue cases.\n\nPublic reviews can't be counted (Google doesn't tell n8n who posted), so they're not in the report. An empty month says \"A quiet month.\"\n\nTo rebuild a past month, set `report_month` in Config (like `2026-10`); an invalid value is ignored. Goes to `report_to`, or `alert_email` if that's blank.",
+        "height": 360,
+        "width": 700,
+        "color": 7
+      },
+      "id": "886769e9-7d95-4085-a196-6e96f45754e2",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -500
+      ]
     }
   ],
   "connections": {

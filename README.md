@@ -91,7 +91,7 @@ Jobs tab ──► FA2 decide ──► send invite ──► Jobs: sent / skipp
 
 **2. Break-test, round 1: 21 targeted attacks.** 7 broke the first version (built-in names like `constructor` leaking code into emails, a line break reaching the subject line, 5,000-email runs, alert mail-bombing through the form, case details sent to an address typed into the Sheet, a 261 KB digest Gmail would clip, an invalid month in the report). All 7 fixed and re-tested. Log: [docs/break-test-log.md](docs/break-test-log.md).
 
-**3. Break-test, round 2: invariant fuzzing.** 5,000 random runs of hostile values (objects posing as text, `__proto__`, `NaN`, 5,000-character strings, emoji, CRLF, formulas) through all five code nodes. Two more crashes found and fixed; final run **5,000 / 0 failures**.
+**3. Break-test, round 2: invariant fuzzing.** 5,000 random runs of hostile values (objects posing as text, `__proto__`, `NaN`, 5,000-character strings, emoji, CRLF, formulas) through the five main code nodes (invite decisions, triage, case finalizing, overdue check, report). One more crash found and fixed: a date cell holding `NaN` or `Infinity` broke the invite engine and the report. Final run **5,000 / 0 failures**.
 
 Run the tests yourself:
 
@@ -123,6 +123,7 @@ The page answers before the case is filed, so the customer never waits on Sheets
 ## Setup
 
 1. **Sheet.** Upload `data/fair-ask-sheet.xlsx` to Google Drive → *Open with → Google Sheets* → *File → Save as Google Sheets*. Replace `you+…@example.com` with real test inboxes (Gmail `+` addressing works).
+   *Optional look:* in that Sheet, **Extensions → Apps Script**, paste [`data/fair-ask-sheet-format.gs`](data/fair-ask-sheet-format.gs), save, and run `formatFairAsk`. It adds the header colours, banded rows, status colours and dropdowns, and never touches data. Create the script from inside the Sheet: a standalone script can't find the spreadsheet.
 2. **Config tab.** Set `from_email` (must be the Gmail account that sends), `alert_email`, owner emails, and keep `dry_run = yes` for the first run.
 3. **Credentials in n8n.** Google Sheets (OAuth2), SMTP (`smtp.gmail.com`, port 465, SSL, Gmail app password), Groq (optional).
 4. **Import** the five files in `workflows/` (*Overview → Create → Import from file*). In every Google Sheets node pick your Sheet; in every email node pick your SMTP credential.
@@ -146,9 +147,9 @@ The page answers before the case is filed, so the customer never waits on Sheets
 ```
 workflows/   n8n exports (IDs, emails and Sheet ID removed)
 src/         the JavaScript inside each Code node, including the feedback page
-tests/       TestKey check, attack suite, fuzzer
-data/        demo Sheet with 40 fake jobs and the expected result for each
-docs/        spec, test results with times, break-test log
+tests/       TestKey check, attack suite, fuzzer, feedback-page checks
+data/        demo Sheet with 40 fake jobs and the expected result for each, plus the Sheet formatting script
+docs/        design spec, test results with times, break-test log
 assets/      screenshots
 ```
 

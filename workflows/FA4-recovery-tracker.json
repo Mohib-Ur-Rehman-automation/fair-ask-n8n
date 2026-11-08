@@ -1,5 +1,5 @@
 {
-  "name": "FA4 \u00b7 Recovery tracker",
+  "name": "FA4 · Recovery tracker",
   "nodes": [
     {
       "id": "0a7db08c-c16d-4cdd-bf5b-e709a5f293f6",
@@ -48,7 +48,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -81,7 +81,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -115,7 +115,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -249,7 +249,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -328,7 +328,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -394,6 +394,38 @@
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "content": "## FA4 · Recovery tracker\nRuns **daily at 09:00** (or **Run now**). **Find overdue** reads Cases and today's Log rows.\n\nEach owner gets **one** morning-check email listing their overdue open cases: at most 25, then \"and N more\". A case is chased at most once a day (today's `reminded` rows in Log), and only owners listed in Config get mail, so an address typed into the Cases tab can't receive case details.\n\nCases set to `resolved` get `resolved_at` stamped.",
+        "height": 360,
+        "width": 680,
+        "color": 7
+      },
+      "id": "01cf0881-e926-4278-a875-f20edbbfa377",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Log every reminder\n**Log rows** writes one `reminded` row per case. That row is what stops a second chase the same day.",
+        "height": 180,
+        "width": 460,
+        "color": 4
+      },
+      "id": "547be889-09cc-4bfb-93c5-28e14b8b5ad8",
+      "name": "Note: Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1560,
+        -260
+      ]
     }
   ],
   "connections": {

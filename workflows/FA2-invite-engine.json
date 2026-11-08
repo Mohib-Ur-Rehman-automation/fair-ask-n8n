@@ -1,5 +1,5 @@
 {
-  "name": "FA2 \u00b7 Invite engine",
+  "name": "FA2 · Invite engine",
   "nodes": [
     {
       "id": "1c60d650-d518-4c29-84fb-a2b59c366ee3",
@@ -48,7 +48,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -81,7 +81,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -322,7 +322,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -419,7 +419,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -535,6 +535,54 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## FA2 · Invite engine\nRuns **daily at 10:00** (or **Run now**). **Decide invites** reads Config and Jobs and picks who gets the neutral invite.\n\nEligible: completed 2 to 14 days ago (`wait_days`, `window_days`), a valid email, not opted out, never invited, and no invite to that address in the last 30 days (`dedupe_days`). Everything else is skipped with a reason in `skip_reason`; nothing is dropped silently.\n\nAt most `max_invites_per_run` (40) per run; the rest wait for the next one. With `dry_run = yes` it decides but sends and writes nothing.",
+        "height": 360,
+        "width": 660,
+        "color": 7
+      },
+      "id": "89a012c3-bd52-4c7f-98fd-902c3665eae2",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Fairness rules (R1 to R4)\n**R1** every eligible customer gets the same email: no sentiment check decides who sees the public link.\n**R2** public review and private feedback are the same size, colour and button.\n**R3** no incentives, quotas or requests for specific words or staff names.\n**R4** the run refuses to send if `public_review_url` is missing or isn't a normal web link.\n\nThis is the point of the piece: Google's review policy doesn't allow review gating.",
+        "height": 360,
+        "width": 600,
+        "color": 5
+      },
+      "id": "99d5b25b-debe-4c96-82a4-500e5f912403",
+      "name": "Note: Fairness",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        680,
+        -480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## One write, then the log\nSent, skipped and failed rows merge into **one** Jobs update, so a failed email can't stop the skipped rows being saved.\nA Gmail refusal marks the job `failed`; the next run retries it and never sends twice.\n**Summarize run** writes one Log row. If anything failed, **Alert owner** sends one email to `alert_email`.",
+        "height": 260,
+        "width": 640,
+        "color": 4
+      },
+      "id": "ba5e459a-4d7f-4537-a8ee-a955fc592f85",
+      "name": "Note: One write",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
+        400
+      ]
     }
   ],
   "connections": {

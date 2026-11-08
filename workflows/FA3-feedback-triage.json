@@ -1,5 +1,5 @@
 {
-  "name": "FA3 \u00b7 Feedback triage",
+  "name": "FA3 · Feedback triage",
   "nodes": [
     {
       "id": "591311a9-06d8-4ad7-bfcd-6ae8a3f7c75c",
@@ -34,7 +34,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -69,7 +69,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -249,7 +249,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -282,7 +282,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -316,7 +316,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -437,7 +437,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -530,7 +530,7 @@
           "__rl": true,
           "mode": "id",
           "value": "YOUR_SHEET_ID",
-          "cachedResultName": "Fair Ask \u2014 Northgate"
+          "cachedResultName": "Fair Ask — Northgate"
         },
         "sheetName": {
           "__rl": true,
@@ -722,6 +722,70 @@
         }
       },
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## FA3 · Feedback triage\nThe page behind the invite's **Send private feedback** button: `/webhook/northgate-feedback`. It only works on the production URL, so this workflow must be published.\n\n**Top row (GET):** **Render page** reads the job from Jobs and builds Northgate's own page (split layout, job facts, light/dark), not n8n's stock form.\n**Bottom row (POST):** **Thanks page** answers first, so the customer never waits on Sheets, Groq or email. The case is filed after that.",
+        "height": 340,
+        "width": 700,
+        "color": 7
+      },
+      "id": "cffac124-a541-44e2-9660-93873beeb049",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -260,
+        -620
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Bots and odd input\n**Real?** stops here if the hidden trap field was filled: the bot sees the thank-you page, nothing is saved, nobody is alerted.\nA blank message, a missing or edited job id, or a tampered category still becomes a case, flagged `[Check by hand: ...]`.",
+        "height": 240,
+        "width": 520,
+        "color": 3
+      },
+      "id": "9907261a-87b5-473b-8b51-6edc4d3a16f8",
+      "name": "Note: Real",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Triage: rules first, AI second\nCategory comes from the customer's choice; **urgent** if the message hits `urgent_keywords` or the category is damage/safety. Deadline: 1 day urgent, 3 days normal (calendar days). Owner from `owner:<category>` in Config, else `owner:other`.\n\n**Groq** only writes a one-line summary, and is skipped for messages with links, markup or instruction-like text. If it's down or returns anything odd, the first words of the message are used.",
+        "height": 320,
+        "width": 640,
+        "color": 6
+      },
+      "id": "eec6567e-94e2-4570-a1e8-9df6447a94f4",
+      "name": "Note: Triage",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        860,
+        -300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Save, open, alert\nOne **Feedback** row and one **Cases** row (status `open`), written as plain text so a formula can't run.\nUrgent cases email the owner, with the customer's original message under the summary. Flood guard: after `alert_cap_per_hour` (5) urgent alerts an hour, or 3 cases for one job in a day, cases are still saved and flagged but alerts stop.",
+        "height": 280,
+        "width": 660,
+        "color": 4
+      },
+      "id": "e15cddb8-70c3-47b5-a0bc-9566fa193da1",
+      "name": "Note: Alerts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -300
+      ]
     }
   ],
   "connections": {

@@ -206,6 +206,22 @@
           "name": "Google Sheets account"
         }
       }
+    },
+    {
+      "parameters": {
+        "content": "## FA0 · Reset demo\nRun by hand before a demo or a recording. Empties **Feedback**, **Cases** and **Log** (row 1, the headers, stays) and puts the 40 demo jobs in **Jobs** back to their starting state.\n\nAfter a reset, FA2's next live run sends the demo invites again, so check `dry_run` in Config first. Never schedule this.",
+        "height": 240,
+        "width": 620,
+        "color": 7
+      },
+      "id": "6bea08ea-d5fd-4e55-a52c-9a2d7776731d",
+      "name": "Note: Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -300
+      ]
     }
   ],
   "connections": {
